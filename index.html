@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>강아지상 vs 고양이상</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
     <style>
         body {
             font-family: 'Pretendard', sans-serif;
@@ -21,7 +21,7 @@
             border-radius: 20px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.1);
             padding: 2rem 2.5rem;
-            max-width: 500px;
+            max-width: 550px;
             width: 100%;
             text-align: center;
         }
@@ -37,22 +37,22 @@
             margin-bottom: 1.5rem;
         }
 
-        button {
+        button, input[type="file"] {
+            margin: 0.5rem;
             background-color: #6c63ff;
             color: white;
             border: none;
-            padding: 0.75rem 1.5rem;
+            padding: 0.7rem 1.2rem;
             font-size: 1rem;
             border-radius: 10px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
         }
 
         button:hover {
             background-color: #574fd6;
         }
 
-        #webcam-container {
+        #webcam-container, #upload-preview {
             margin: 1rem 0;
         }
 
@@ -71,14 +71,26 @@
             font-weight: bold;
             color: #4b5563;
         }
+
+        img#upload-preview {
+            max-width: 200px;
+            border-radius: 12px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🐶 강아지상 vs 고양이상 🐱</h1>
-        <p class="description">이 인공지능은 개와 고양이를 구분합니다.<br>자신이 <strong>강아지상</strong>인지 <strong>고양이상</strong>인지 확인해보세요!</p>
-        <button type="button" onclick="init()">시작하기</button>
+        <p class="description">
+            이 인공지능은 개와 고양이를 구분합니다.<br>
+            웹캠을 켜거나, 사진을 업로드해 확인해보세요!
+        </p>
+        <div>
+            <button onclick="initWebcam()">웹캠 시작</button>
+            <input type="file" accept="image/*" onchange="handleUpload(event)">
+        </div>
         <div id="webcam-container"></div>
+        <img id="upload-preview" style="display: none;" />
         <div id="label-container"></div>
         <div id="result"></div>
     </div>
@@ -88,59 +100,15 @@
 
         let model, webcam, labelContainer, maxPredictions;
 
-        async function init() {
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
-
-            model = await tmImage.load(modelURL, metadataURL);
-            maxPredictions = model.getTotalClasses();
-
-            const flip = true;
-            webcam = new tmImage.Webcam(200, 200, flip);
-            await webcam.setup();
-            await webcam.play();
-            window.requestAnimationFrame(loop);
-
-            document.getElementById("webcam-container").appendChild(webcam.canvas);
-            labelContainer = document.getElementById("label-container");
-            labelContainer.innerHTML = '';
-            for (let i = 0; i < maxPredictions; i++) {
-                labelContainer.appendChild(document.createElement("div"));
-            }
-        }
-
-        async function loop() {
-            webcam.update();
-            await predict();
-            window.requestAnimationFrame(loop);
-        }
-
-        async function predict() {
-            const prediction = await model.predict(webcam.canvas);
-            let resultText = "";
-            let dogProb = 0;
-            let catProb = 0;
-
-            for (let i = 0; i < maxPredictions; i++) {
-                const className = prediction[i].className;
-                const prob = prediction[i].probability;
-                const display = `${className}: ${(prob * 100).toFixed(1)}%`;
-                labelContainer.childNodes[i].innerHTML = display;
-
-                if (className.includes("개")) dogProb = prob;
-                if (className.includes("고양이")) catProb = prob;
+        async function loadModel() {
+            if (!model) {
+                const modelURL = URL + "model.json";
+                const metadataURL = URL + "metadata.json";
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
             }
 
-            if (dogProb > 0.5) {
-                resultText = "🐶 당신은 <strong>강아지상</strong>이에요!";
-            } else if (catProb > 0.5) {
-                resultText = "🐱 당신은 <strong>고양이상</strong>이에요!";
-            } else {
-                resultText = "🤔 아직 판단이 어려워요. 조금 더 정면을 봐주세요!";
-            }
-
-            document.getElementById("result").innerHTML = resultText;
-        }
-    </script>
-</body>
-</html>
+            if (!labelContainer) {
+                labelContainer = document.getElementById("label-container");
+                labelContainer.innerHTML = '';
+                for (
