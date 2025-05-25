@@ -2,32 +2,145 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Teachable Machine 모델</title>
+    <title>강아지상 vs 고양이상</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <style>
         body {
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Pretendard', sans-serif;
+            background: linear-gradient(to bottom right, #fdfbfb, #ebedee);
             display: flex;
             flex-direction: column;
             align-items: center;
-            background: #f0f4f8;
             margin: 0;
             padding: 2rem;
         }
 
-        h1 {
-            color: #333;
-        }
-
         .container {
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            max-width: 400px;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            padding: 2rem 2.5rem;
+            max-width: 500px;
             width: 100%;
             text-align: center;
         }
 
+        h1 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        p.description {
+            color: #555;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
         button {
+            background-color: #6c63ff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #574fd6;
+        }
+
+        #webcam-container {
+            margin: 1rem 0;
+        }
+
+        #label-container div {
+            background: #f0f4ff;
+            margin: 0.3rem 0;
+            padding: 0.6rem;
+            border-radius: 10px;
+            color: #1e40af;
+            font-weight: 600;
+        }
+
+        #result {
+            margin-top: 1.5rem;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐶 강아지상 vs 고양이상 🐱</h1>
+        <p class="description">이 인공지능은 개와 고양이를 구분합니다.<br>자신이 <strong>강아지상</strong>인지 <strong>고양이상</strong>인지 확인해보세요!</p>
+        <button type="button" onclick="init()">시작하기</button>
+        <div id="webcam-container"></div>
+        <div id="label-container"></div>
+        <div id="result"></div>
+    </div>
+
+    <script type="text/javascript">
+        const URL = "https://teachablemachine.withgoogle.com/models/K8Xo4cznU/";
+
+        let model, webcam, labelContainer, maxPredictions;
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const flip = true;
+            webcam = new tmImage.Webcam(200, 200, flip);
+            await webcam.setup();
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = '';
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
+            }
+        }
+
+        async function loop() {
+            webcam.update();
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            let resultText = "";
+            let dogProb = 0;
+            let catProb = 0;
+
+            for (let i = 0; i < maxPredictions; i++) {
+                const className = prediction[i].className;
+                const prob = prediction[i].probability;
+                const display = `${className}: ${(prob * 100).toFixed(1)}%`;
+                labelContainer.childNodes[i].innerHTML = display;
+
+                if (className.includes("개")) dogProb = prob;
+                if (className.includes("고양이")) catProb = prob;
+            }
+
+            if (dogProb > 0.5) {
+                resultText = "🐶 당신은 <strong>강아지상</strong>이에요!";
+            } else if (catProb > 0.5) {
+                resultText = "🐱 당신은 <strong>고양이상</strong>이에요!";
+            } else {
+                resultText = "🤔 아직 판단이 어려워요. 조금 더 정면을 봐주세요!";
+            }
+
+            document.getElementById("result").innerHTML = resultText;
+        }
+    </script>
+</body>
+</html>
