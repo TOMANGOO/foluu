@@ -37,7 +37,7 @@
             margin-bottom: 1.5rem;
         }
 
-        button, input[type="file"] {
+        input[type="file"], button {
             margin: 0.5rem;
             background-color: #6c63ff;
             color: white;
@@ -52,8 +52,11 @@
             background-color: #574fd6;
         }
 
-        #webcam-container, #upload-preview {
-            margin: 1rem 0;
+        #upload-preview {
+            margin-top: 1rem;
+            max-width: 300px;
+            border-radius: 12px;
+            display: none;
         }
 
         #label-container div {
@@ -71,34 +74,24 @@
             font-weight: bold;
             color: #4b5563;
         }
-
-        img#upload-preview {
-            max-width: 200px;
-            border-radius: 12px;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🐶 강아지상 vs 고양이상 🐱</h1>
-        <p class="description">
-            이 인공지능은 개와 고양이를 구분합니다.<br>
-            웹캠을 켜거나, 사진을 업로드해 확인해보세요!
-        </p>
-        <div>
-            <button onclick="initWebcam()">웹캠 시작</button>
-            <input type="file" accept="image/*" onchange="handleUpload(event)">
-        </div>
-        <div id="webcam-container"></div>
-        <img id="upload-preview" style="display: none;" />
+        <p class="description">사진을 업로드해 자신이 어떤 얼굴형인지 확인해보세요!</p>
+        <input type="file" accept="image/*" onchange="handleUpload(event)">
+        <button onclick="analyzeImage()">분석 시작</button>
+        <img id="upload-preview" />
         <div id="label-container"></div>
         <div id="result"></div>
     </div>
 
-    <script type="text/javascript">
+    <script>
         const URL = "https://teachablemachine.withgoogle.com/models/K8Xo4cznU/";
 
-        let model, webcam, labelContainer, maxPredictions;
+        let model, maxPredictions;
+        let selectedImage = null;
 
         async function loadModel() {
             if (!model) {
@@ -108,37 +101,11 @@
                 maxPredictions = model.getTotalClasses();
             }
 
-            if (!labelContainer) {
-                labelContainer = document.getElementById("label-container");
-                labelContainer.innerHTML = '';
-                for (let i = 0; i < maxPredictions; i++) {
-                    labelContainer.appendChild(document.createElement("div"));
-                }
+            const labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = '';
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
             }
-        }
-
-        async function initWebcam() {
-            await loadModel();
-
-            if (webcam) {
-                webcam.stop();
-            }
-
-            webcam = new tmImage.Webcam(200, 200, true);
-            await webcam.setup();
-            await webcam.play();
-            document.getElementById("webcam-container").innerHTML = '';
-            document.getElementById("webcam-container").appendChild(webcam.canvas);
-
-            document.getElementById("upload-preview").style.display = "none";
-
-            window.requestAnimationFrame(loop);
-        }
-
-        async function loop() {
-            webcam.update();
-            await predict(webcam.canvas);
-            window.requestAnimationFrame(loop);
         }
 
         async function handleUpload(event) {
@@ -149,39 +116,43 @@
 
             const img = document.getElementById("upload-preview");
             img.src = URL.createObjectURL(file);
-            img.style.display = "block";
-            img.onload = async () => {
-                document.getElementById("webcam-container").innerHTML = '';
-                await predict(img);
+            img.onload = () => {
+                img.style.display = "block";
+                selectedImage = img;
             };
         }
 
-        async function predict(input) {
-            const prediction = await model.predict(input);
+        async function analyzeImage() {
+            if (!selectedImage || !model) {
+                alert("먼저 이미지를 업로드해주세요.");
+                return;
+            }
+
+            const prediction = await model.predict(selectedImage);
             let dogProb = 0;
             let catProb = 0;
+            const labelContainer = document.getElementById("label-container");
 
-            for (let i = 0; i < maxPredictions; i++) {
+            for (let i = 0; i < prediction.length; i++) {
                 const className = prediction[i].className;
                 const prob = prediction[i].probability;
-                const display = `${className}: ${(prob * 100).toFixed(1)}%`;
-                labelContainer.childNodes[i].innerHTML = display;
+                labelContainer.childNodes[i].innerHTML =
+                    `${className}: ${(prob * 100).toFixed(1)}%`;
 
                 if (className.includes("개")) dogProb = prob;
                 if (className.includes("고양이")) catProb = prob;
             }
 
-            let resultText = "";
+            const resultDiv = document.getElementById("result");
             if (dogProb > 0.5) {
-                resultText = "🐶 당신은 <strong>강아지상</strong>이에요!";
+                resultDiv.innerHTML = "🐶 당신은 <strong>강아지상</strong>이에요!";
             } else if (catProb > 0.5) {
-                resultText = "🐱 당신은 <strong>고양이상</strong>이에요!";
+                resultDiv.innerHTML = "🐱 당신은 <strong>고양이상</strong>이에요!";
             } else {
-                resultText = "🤔 아직 판단이 어려워요. 정면 사진을 사용해보세요!";
+                resultDiv.innerHTML = "🤔 판별이 어려워요. 정면 얼굴 사진을 사용해보세요!";
             }
-
-            document.getElementById("result").innerHTML = resultText;
         }
     </script>
 </body>
 </html>
+
