@@ -111,4 +111,77 @@
             if (!labelContainer) {
                 labelContainer = document.getElementById("label-container");
                 labelContainer.innerHTML = '';
-                for (
+                for (let i = 0; i < maxPredictions; i++) {
+                    labelContainer.appendChild(document.createElement("div"));
+                }
+            }
+        }
+
+        async function initWebcam() {
+            await loadModel();
+
+            if (webcam) {
+                webcam.stop();
+            }
+
+            webcam = new tmImage.Webcam(200, 200, true);
+            await webcam.setup();
+            await webcam.play();
+            document.getElementById("webcam-container").innerHTML = '';
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+            document.getElementById("upload-preview").style.display = "none";
+
+            window.requestAnimationFrame(loop);
+        }
+
+        async function loop() {
+            webcam.update();
+            await predict(webcam.canvas);
+            window.requestAnimationFrame(loop);
+        }
+
+        async function handleUpload(event) {
+            await loadModel();
+
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const img = document.getElementById("upload-preview");
+            img.src = URL.createObjectURL(file);
+            img.style.display = "block";
+            img.onload = async () => {
+                document.getElementById("webcam-container").innerHTML = '';
+                await predict(img);
+            };
+        }
+
+        async function predict(input) {
+            const prediction = await model.predict(input);
+            let dogProb = 0;
+            let catProb = 0;
+
+            for (let i = 0; i < maxPredictions; i++) {
+                const className = prediction[i].className;
+                const prob = prediction[i].probability;
+                const display = `${className}: ${(prob * 100).toFixed(1)}%`;
+                labelContainer.childNodes[i].innerHTML = display;
+
+                if (className.includes("개")) dogProb = prob;
+                if (className.includes("고양이")) catProb = prob;
+            }
+
+            let resultText = "";
+            if (dogProb > 0.5) {
+                resultText = "🐶 당신은 <strong>강아지상</strong>이에요!";
+            } else if (catProb > 0.5) {
+                resultText = "🐱 당신은 <strong>고양이상</strong>이에요!";
+            } else {
+                resultText = "🤔 아직 판단이 어려워요. 정면 사진을 사용해보세요!";
+            }
+
+            document.getElementById("result").innerHTML = resultText;
+        }
+    </script>
+</body>
+</html>
