@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>강아지상 vs 고양이상</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <style>
         body {
             font-family: 'Pretendard', sans-serif;
@@ -21,7 +21,7 @@
             border-radius: 20px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.1);
             padding: 2rem 2.5rem;
-            max-width: 550px;
+            max-width: 500px;
             width: 100%;
             text-align: center;
         }
@@ -37,26 +37,23 @@
             margin-bottom: 1.5rem;
         }
 
-        input[type="file"], button {
-            margin: 0.5rem;
+        button {
             background-color: #6c63ff;
             color: white;
             border: none;
-            padding: 0.7rem 1.2rem;
+            padding: 0.75rem 1.5rem;
             font-size: 1rem;
             border-radius: 10px;
             cursor: pointer;
+            transition: background-color 0.3s ease;
         }
 
         button:hover {
             background-color: #574fd6;
         }
 
-        #upload-preview {
-            margin-top: 1rem;
-            max-width: 300px;
-            border-radius: 12px;
-            display: none;
+        #webcam-container {
+            margin: 1rem 0;
         }
 
         #label-container div {
@@ -79,78 +76,70 @@
 <body>
     <div class="container">
         <h1>🐶 강아지상 vs 고양이상 🐱</h1>
-        <p class="description">사진을 업로드해 자신이 어떤 얼굴형인지 확인해보세요!</p>
-        <input type="file" accept="image/*" onchange="handleUpload(event)">
-        <button onclick="analyzeImage()">분석 시작</button>
-        <img id="upload-preview" />
+        <p class="description">이 인공지능은 개와 고양이를 구분합니다.<br>자신이 <strong>강아지상</strong>인지 <strong>고양이상</strong>인지 확인해보세요!</p>
+        <button type="button" onclick="init()">시작하기</button>
+        <div id="webcam-container"></div>
         <div id="label-container"></div>
         <div id="result"></div>
     </div>
 
-    <script>
+    <script type="text/javascript">
         const URL = "https://teachablemachine.withgoogle.com/models/K8Xo4cznU/";
 
-        let model, maxPredictions;
-        let selectedImage = null;
+        let model, webcam, labelContainer, maxPredictions;
 
-        async function loadModel() {
-            if (!model) {
-                const modelURL = URL + "model.json";
-                const metadataURL = URL + "metadata.json";
-                model = await tmImage.load(modelURL, metadataURL);
-                maxPredictions = model.getTotalClasses();
-            }
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
 
-            const labelContainer = document.getElementById("label-container");
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const flip = true;
+            webcam = new tmImage.Webcam(200, 200, flip);
+            await webcam.setup();
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            labelContainer = document.getElementById("label-container");
             labelContainer.innerHTML = '';
             for (let i = 0; i < maxPredictions; i++) {
                 labelContainer.appendChild(document.createElement("div"));
             }
         }
 
-        async function handleUpload(event) {
-            await loadModel();
-
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const img = document.getElementById("upload-preview");
-            img.src = URL.createObjectURL(file);
-            img.onload = () => {
-                img.style.display = "block";
-                selectedImage = img;
-            };
+        async function loop() {
+            webcam.update();
+            await predict();
+            window.requestAnimationFrame(loop);
         }
 
-        async function analyzeImage() {
-            if (!selectedImage || !model) {
-                alert("먼저 이미지를 업로드해주세요.");
-                return;
-            }
-
-            const prediction = await model.predict(selectedImage);
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            let resultText = "";
             let dogProb = 0;
             let catProb = 0;
-            const labelContainer = document.getElementById("label-container");
 
-            for (let i = 0; i < prediction.length; i++) {
+            for (let i = 0; i < maxPredictions; i++) {
                 const className = prediction[i].className;
                 const prob = prediction[i].probability;
-                labelContainer.childNodes[i].innerHTML =
-                    `${className}: ${(prob * 100).toFixed(1)}%`;
+                const display = `${className}: ${(prob * 100).toFixed(1)}%`;
+                labelContainer.childNodes[i].innerHTML = display;
 
                 if (className.includes("개")) dogProb = prob;
                 if (className.includes("고양이")) catProb = prob;
             }
 
-            const resultDiv = document.getElementById("result");
             if (dogProb > 0.5) {
-                resultDiv.innerHTML = "🐶 당신은 <strong>강아지상</strong>이에요!";
+                resultText = "🐶 당신은 <strong>강아지상</strong>이에요!";
             } else if (catProb > 0.5) {
-                resultDiv.innerHTML = "🐱 당신은 <strong>고양이상</strong>이에요!";
+                resultText = "🐱 당신은 <strong>고양이상</strong>이에요!";
             } else {
-                resultDiv.innerHTML = "🤔 판별이 어려워요. 정면 얼굴 사진을 사용해보세요!";
+                resultText = "🤔 아직 판단이 어려워요. 조금 더 정면을 봐주세요!";
             }
+
+            document.getElementById("result").innerHTML = resultText;
         }
     </script>
 </body>
