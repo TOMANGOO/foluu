@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>좌뇌형 vs 우뇌형 테스트</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #fef8f5;
+      color: #333;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #ff6f61;
+    }
+    .question {
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #fff8f0;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .choices label {
+      display: block;
+      margin: 8px 0;
+      cursor: pointer;
+    }
+    .result {
+      display: none;
+      padding: 20px;
+      margin-top: 30px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 1.2em;
+      background-color: #fff3f3;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    }
+    button {
+      background-color: #ff6f61;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1em;
+      cursor: pointer;
+      display: block;
+      margin: 20px auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>나는 좌뇌형일까, 우뇌형일까?</h1>
+  <form id="quizForm">
+    <!-- JS가 삽입 -->
+  </form>
+  <div class="result" id="result"></div>
+
+  <script>
+    const questions = [
+      { q: "문제를 풀 때 나는…", a: ["전체적인 감을 잡고 직관적으로 접근한다", "논리적인 순서에 따라 단계별로 접근한다"], r: 0 },
+      { q: "자유 시간이 생기면 나는…", a: ["그림을 그리거나 음악을 듣는다", "책을 읽거나 정보 검색을 한다"], r: 0 },
+      { q: "친구와의 대화에서 나는…", a: ["감정과 분위기를 중요하게 여긴다", "사실과 정확한 정보를 중시한다"], r: 0 },
+      { q: "업무나 과제를 할 때 나는…", a: ["생각나는 아이디어부터 먼저 실행한다", "계획을 세워 차근차근 진행한다"], r: 0 },
+      { q: "새로운 개념을 배울 때 나는…", a: ["사례나 비유를 통해 감각적으로 접근한다", "정의와 원리를 이해하려 한다"], r: 0 },
+      { q: "내가 선호하는 공간은…", a: ["자유롭고 개방적인 분위기의 창의적인 공간", "정돈된 책상과 정해진 자리가 있는 공간"], r: 0 },
+      { q: "정보를 기억할 때 나는…", a: ["글이나 숫자를 중심으로 암기한다", "그림이나 이미지로 기억하는 편이다"], r: 1 },
+      { q: "친구에게 조언할 때 나는…", a: ["감정적으로 공감하고 위로해 준다", "이성적으로 분석하고 대안을 제시한다"], r: 0 },
+      { q: "나는 어떤 사람인가?", a: ["즉흥적이고 유연한 편이다", "규칙을 잘 지키는 편이다"], r: 0 },
+      { q: "나에게 더 끌리는 것은?", a: ["미술 작품 감상하기", "수학 문제 풀기"], r: 0 },
+    ];
+
+    const form = document.getElementById("quizForm");
+
+    questions.forEach((item, index) => {
+      const container = document.createElement("div");
+      container.className = "question";
+      container.innerHTML = `<strong>${index + 1}. ${item.q}</strong>`;
+
+      const choicesDiv = document.createElement("div");
+      choicesDiv.className = "choices";
+
+      item.a.forEach((choice, cIdx) => {
+        const id = `q${index}_a${cIdx}`;
+        choicesDiv.innerHTML += `
+          <label><input type="radio" name="q${index}" value="${cIdx}" required> ${choice}</label>
+        `;
+      });
+
+      container.appendChild(choicesDiv);
+      form.appendChild(container);
+    });
+
+    const button = document.createElement("button");
+    button.textContent = "결과 보기";
+    form.appendChild(button);
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      let rightBrain = 0;
+
+      questions.forEach((q, idx) => {
+        const selected = form[`q${idx}`].value;
+        const rightIndex = q.r;
+        if (parseInt(selected) === rightIndex) rightBrain++;
+      });
+
+      const resultBox = document.getElementById("result");
+      form.style.display = "none";
+      resultBox.style.display = "block";
+
+      let message = "";
+      if (rightBrain >= 6) {
+        message = "🧠 당신은 <strong style='color:#ff69b4'>우뇌형 인간</strong>이에요!<br>감성과 창의력이 풍부한 예술가 타입이에요! 🎨🎶✨";
+      } else if (rightBrain <= 3) {
+        message = "📘 당신은 <strong style='color:#4a90e2'>좌뇌형 인간</strong>이에요!<br>논리와 분석이 뛰어난 이성적인 전략가 타입이에요! 📊📐💡";
+      } else {
+        message = "🌈 당신은 <strong style='color:#9c27b0'>균형형 인간</strong>이에요!<br>좌우뇌의 균형을 갖춘 융합형 인재네요! 🧩🔍🎨";
+      }
+
+      resultBox.innerHTML = `<h2>🔍 테스트 결과</h2><p>${message}</p><button onclick="location.reload()">🔁 다시 해보기</button>`;
+    });
+  </script>
+</body>
+</html>
